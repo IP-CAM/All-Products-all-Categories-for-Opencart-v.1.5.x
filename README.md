@@ -1,4 +1,4 @@
-All Products and All Categories (APAC) + PLUS v1.0.1
+All Products and All Categories (APAC) + PLUS
 OpenCart extension
 
 ---
@@ -35,7 +35,8 @@ All Categories features and option settings include:
 
 Uses database caching for database queries to improve page load speed.
 
-View demo website at http://opencart.garudacrafts.com/1561 for an example.
+All Products example: http://opencart.garudacrafts.com/1561/index.php?route=product/allproducts
+All Categories example: http://opencart.garudacrafts.com/1561/index.php?route=product/allcategories
 
 ---
 
@@ -44,12 +45,3 @@ INSTALLATION INSTRUCTIONS
 - Upload 'admin', 'catalog', and 'vqmod' directories to your web server root.
 - Configure & Save module settings at Admin->Extensions->Modules->APAC (be sure to complete BOTH sections, Options & Data, on each tab!)
 - To support Product Filters don't forget to add route="product/allproducts" to your chosen Layout (e.g. "Category")!
-
----
-
-CHANGELOG
-
-v1.0.1
-- fixed total product counts bug
-
-http://www.opencart.com/index.php?route=extension/extension/info&extension_id=17565
