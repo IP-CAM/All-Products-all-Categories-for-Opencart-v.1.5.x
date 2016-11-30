@@ -1,0 +1,561 @@
+<modification>
+	<id>All Products and All Categories (APAC) + PLUS for OpenCart</id>
+	<version>1.0.0</version>
+	<vqmver>2.4.0</vqmver>
+	<author>garudacrafts</author>
+	<notes>Please see Module Settings page for information and instructions.</notes>
+	
+	<!-- ALL PRODUCTS -->
+	
+	<file name="catalog/language/english/common/header.php,catalog/language/english/product/category.php,catalog/language/english/product/product.php">
+		<operation>
+			<search position="bottom" offset="2"></search>
+			<add><![CDATA[
+			$_['text_all_products']		= 'All Products';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/language/english/product/category.php">
+		<operation>
+			<search position="bottom" offset="2"></search>
+			<add><![CDATA[
+			$_['text_date_asc']   			= 'Date (Old &gt; New)';
+			$_['text_date_desc']  			= 'Date (New &gt; Old)';
+			$_['text_filter_category']  	= 'Category:';
+			$_['text_filter_manufacturer']  = 'Brand:';
+			$_['text_category_all']  		= '-- All Categories --';
+			$_['text_manufacturer_all']  	= '-- All Brands --';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/common/header.php">
+		<operation>
+			<search position="after"><![CDATA[
+			$this->data['text_checkout']
+			]]></search>			
+			<add><![CDATA[
+			$this->data['text_all_products'] = $this->language->get('text_all_products');
+			$this->data['all_products'] = $this->url->link('product/allproducts');
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/view/theme/*/template/common/header.tpl">
+		<operation>
+			<search position="before"><![CDATA[
+			 <?php foreach ($categories as $category) { ?>
+			]]></search>
+			<add><![CDATA[
+			<?php if ($this->config->get('apac_status') && $this->config->get('apac_products_status') && $this->config->get('apac_products_nav_menu')) { ?>
+			<li><a href="<?php echo $all_products; ?>"><?php echo $text_all_products; ?></a></li>
+			<?php } ?>
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/module/filter.php" error="skip">
+		<operation>
+			<search position="replace"><![CDATA[
+			if ($category_info) {
+			]]></search>			
+			<add><![CDATA[
+			if ($category_info || (isset($this->request->get['route']) && $this->request->get['route'] == 'product/allproducts')) {
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[
+			$this->data['action'] = str_replace('&amp;', '&', $this->url->link('product/category', 'path=' . $this->request->get['path'] . $url));
+			]]></search>			
+			<add><![CDATA[
+			if (isset($this->request->get['route']) && $this->request->get['route'] == 'product/allproducts') {
+				$this->data['action'] = str_replace('&amp;', '&', $this->url->link('product/allproducts', $url));
+			} else {
+				$this->data['action'] = str_replace('&amp;', '&', $this->url->link('product/category', 'path=' . $this->request->get['path'] . $url));
+			}
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[
+			$filter_groups = $this->model_catalog_category->getCategoryFilters($category_id);
+			]]></search>			
+			<add><![CDATA[
+			if ($category_info) {
+				$filter_groups = $this->model_catalog_category->getCategoryFilters($category_id);
+			} elseif (!$this->config->get('apac_products_filters_all')) {
+				$data = array(
+					'filter_category_filter'		=> 1
+				);
+				$filter_groups = $this->model_catalog_category->getCategoryFiltersAll($data);
+			} else {
+				$filter_groups = $this->model_catalog_category->getCategoryFiltersAll();
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/product/product.php">
+		<operation>
+			<search position="after" offset="2"><![CDATA[
+			$this->url->link('common/home'),
+			]]></search>			
+			<add><![CDATA[
+			if ($this->config->get('apac_status') && $this->config->get('apac_products_status') && $this->config->get('apac_products_breadcrumb')) {
+				$this->data['breadcrumbs'][] = array(
+					'text'      => $this->language->get('text_all_products'),
+					'href'      => $this->url->link('product/allproducts'),
+					'separator' => $this->language->get('text_separator')
+				);
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/model/catalog/product.php">
+		<operation>
+			<search position="before"><![CDATA[
+			function getProduct(
+			]]></search>
+			<add><![CDATA[
+			public function getProductsAll($data = array()) {
+				if ($this->customer->isLogged()) {
+					$customer_group_id = $this->customer->getCustomerGroupId();
+				} else {
+					$customer_group_id = $this->config->get('config_customer_group_id');
+				}	
+				
+				$cache = md5(http_build_query($data));
+				
+				$product_data = $this->cache->get('product.all.' . (int)$this->config->get('config_language_id') . '.' . (int)$this->config->get('config_store_id') . '.' . (int)$customer_group_id . '.' . $cache);
+				
+				if (!$product_data) {
+					$sql = "SELECT p.product_id, (SELECT AVG(rating) AS total FROM " . DB_PREFIX . "review r1 WHERE r1.product_id = p.product_id AND r1.status = '1' GROUP BY r1.product_id) AS rating, (SELECT price FROM " . DB_PREFIX . "product_discount pd2 WHERE pd2.product_id = p.product_id AND pd2.customer_group_id = '" . (int)$customer_group_id . "' AND pd2.quantity = '1' AND ((pd2.date_start = '0000-00-00' OR pd2.date_start < NOW()) AND (pd2.date_end = '0000-00-00' OR pd2.date_end > NOW())) ORDER BY pd2.priority ASC, pd2.price ASC LIMIT 1) AS discount, (SELECT price FROM " . DB_PREFIX . "product_special ps WHERE ps.product_id = p.product_id AND ps.customer_group_id = '" . (int)$customer_group_id . "' AND ((ps.date_start = '0000-00-00' OR ps.date_start < NOW()) AND (ps.date_end = '0000-00-00' OR ps.date_end > NOW())) ORDER BY ps.priority ASC, ps.price ASC LIMIT 1) AS special"; 
+					
+					if (!empty($data['filter_category_id'])) {
+						if (!empty($data['filter_sub_category'])) {
+							$sql .= " FROM " . DB_PREFIX . "category_path cp LEFT JOIN " . DB_PREFIX . "product_to_category p2c ON (cp.category_id = p2c.category_id)";			
+						} else {
+							$sql .= " FROM " . DB_PREFIX . "product_to_category p2c";
+						}
+
+						if (!empty($data['filter_filter'])) {
+							$sql .= " LEFT JOIN " . DB_PREFIX . "product_filter pf ON (p2c.product_id = pf.product_id) LEFT JOIN " . DB_PREFIX . "product p ON (pf.product_id = p.product_id)";
+						} else {
+							$sql .= " LEFT JOIN " . DB_PREFIX . "product p ON (p2c.product_id = p.product_id)";
+						}
+					} elseif (!empty($data['filter_filter'])) {
+						$sql .= " FROM " . DB_PREFIX . "product_filter pf LEFT JOIN " . DB_PREFIX . "product p ON (pf.product_id = p.product_id)";						
+					} else {
+						$sql .= " FROM " . DB_PREFIX . "product p";
+					}
+
+					$sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) LEFT JOIN " . DB_PREFIX . "product_to_store p2s ON (p.product_id = p2s.product_id) WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND p.status = '1' AND p.date_available <= NOW() AND p2s.store_id = '" . (int)$this->config->get('config_store_id') . "'";
+
+					if (!empty($data['filter_category_id'])) {
+						if (!empty($data['filter_sub_category'])) {
+							$sql .= " AND cp.path_id = '" . (int)$data['filter_category_id'] . "'";	
+						} else {
+							$sql .= " AND p2c.category_id = '" . (int)$data['filter_category_id'] . "'";			
+						}	
+
+						if (!empty($data['filter_filter'])) {
+							$implode = array();
+
+							$filters = explode(',', $data['filter_filter']);
+
+							foreach ($filters as $filter_id) {
+								$implode[] = (int)$filter_id;
+							}
+
+							$sql .= " AND pf.filter_id IN (" . implode(',', $implode) . ")";				
+						}
+					} elseif (!empty($data['filter_filter'])) {
+							$implode = array();
+
+							$filters = explode(',', $data['filter_filter']);
+
+							foreach ($filters as $filter_id) {
+								$implode[] = (int)$filter_id;
+							}
+
+							$sql .= " AND pf.filter_id IN (" . implode(',', $implode) . ")";
+					}
+					
+					if (!empty($data['filter_manufacturer_id'])) {
+						$sql .= " AND p.manufacturer_id = '" . (int)$data['filter_manufacturer_id'] . "'";
+					}
+					
+					$sql .= " GROUP BY p.product_id";
+					
+					$sort_data = array(
+						'pd.name',
+						'p.model',
+						'p.quantity',
+						'p.price',
+						'rating',
+						'p.sort_order',
+						'p.date_added'
+					);
+					
+					if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
+						if ($data['sort'] == 'pd.name' || $data['sort'] == 'p.model') {
+							$sql .= " ORDER BY LCASE(" . $data['sort'] . ")";
+						} elseif ($data['sort'] == 'p.price') {
+							$sql .= " ORDER BY (CASE WHEN special IS NOT NULL THEN special WHEN discount IS NOT NULL THEN discount ELSE p.price END)";
+						} else {
+							$sql .= " ORDER BY " . $data['sort'];
+						}
+					} else {
+						$sql .= " ORDER BY p.sort_order";	
+					}
+			
+					if (isset($data['order']) && ($data['order'] == 'DESC')) {
+						$sql .= " DESC, LCASE(pd.name) DESC";
+					} else {
+						$sql .= " ASC, LCASE(pd.name) ASC";
+					}
+				
+					if (isset($data['start']) || isset($data['limit'])) {
+						if ($data['start'] < 0) {
+							$data['start'] = 0;
+						}				
+			
+						if ($data['limit'] < 1) {
+							$data['limit'] = 20;
+						}	
+					
+						$sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+					}
+					
+					$product_data = array();
+							
+					$query = $this->db->query($sql);
+				
+					foreach ($query->rows as $result) {
+						$product_data[$result['product_id']] = $this->getProduct($result['product_id']);
+					}
+					
+					$this->cache->set('product.all.' . (int)$this->config->get('config_language_id') . '.' . (int)$this->config->get('config_store_id') . '.' . (int)$customer_group_id . '.' . $cache, $product_data);
+				}
+				
+				return $product_data;
+			}
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace" offset="16"><![CDATA[
+			$sql = "SELECT COUNT(DISTINCT p.product_id) AS total"; 
+			]]></search>			
+			<add><![CDATA[
+			$sql = "SELECT COUNT(DISTINCT p.product_id) AS total"; 
+			
+			if (!empty($data['filter_category_id'])) {
+				if (!empty($data['filter_sub_category'])) {
+					$sql .= " FROM " . DB_PREFIX . "category_path cp LEFT JOIN " . DB_PREFIX . "product_to_category p2c ON (cp.category_id = p2c.category_id)";			
+				} else {
+					$sql .= " FROM " . DB_PREFIX . "product_to_category p2c";
+				}
+
+				if (!empty($data['filter_filter'])) {
+					$sql .= " LEFT JOIN " . DB_PREFIX . "product_filter pf ON (p2c.product_id = pf.product_id) LEFT JOIN " . DB_PREFIX . "product p ON (pf.product_id = p.product_id)";
+				} else {
+					$sql .= " LEFT JOIN " . DB_PREFIX . "product p ON (p2c.product_id = p.product_id)";
+				}
+			} elseif (!empty($data['filter_filter'])) {
+				$sql .= " FROM " . DB_PREFIX . "product_filter pf LEFT JOIN " . DB_PREFIX . "product p ON (pf.product_id = p.product_id)";									
+			} else {
+				$sql .= " FROM " . DB_PREFIX . "product p";
+			}
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before" index="2" offset="1"><![CDATA[
+			if (!empty($data['filter_name']) || !empty($data['filter_tag'])) {
+			]]></search>			
+			<add><![CDATA[
+			elseif (!empty($data['filter_filter'])) {
+				$implode = array();
+
+				$filters = explode(',', $data['filter_filter']);
+
+				foreach ($filters as $filter_id) {
+					$implode[] = (int)$filter_id;
+				}
+
+				$sql .= " AND pf.filter_id IN (" . implode(',', $implode) . ")";
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<!-- ALL CATEGORIES -->
+	
+	<file name="catalog/language/english/common/header.php,catalog/language/english/product/category.php,catalog/language/english/product/product.php">
+		<operation>
+			<search position="bottom" offset="2"></search>
+			<add><![CDATA[
+			$_['text_all_categories']	= 'All Categories';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/language/english/product/category.php">
+		<operation>
+			<search position="bottom" offset="2"></search>
+			<add><![CDATA[
+			$_['text_index']			= 'Category Index:';
+			$_['text_path_name_asc']   = 'Path Name (A - Z)';
+			$_['text_path_name_desc']  = 'Path Name (Z - A)';
+			$_['text_sort_order_asc']   = 'Sort Order (Low &gt; High)';
+			$_['text_sort_order_desc']  = 'Sort Order (High &gt; Low)';
+			$_['text_sort_order_path_asc']   = 'Path Sort Order (Low &gt; High)';
+			$_['text_sort_order_path_desc']  = 'Path Sort Order (High &gt; Low)';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/common/header.php">
+		<operation>
+			<search position="after"><![CDATA[
+			$this->data['text_checkout']
+			]]></search>			
+			<add><![CDATA[
+			$this->data['text_all_categories'] = $this->language->get('text_all_categories');
+			$this->data['all_categories'] = $this->url->link('product/allcategories');
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/view/theme/*/template/common/header.tpl">
+		<operation>
+			<search position="before"><![CDATA[
+			 <?php foreach ($categories as $category) { ?>
+			]]></search>
+			<add><![CDATA[
+			<?php if ($this->config->get('apac_status') && $this->config->get('apac_categories_status') && $this->config->get('apac_categories_nav_menu')) { ?>
+			<li><a href="<?php echo $all_categories; ?>"><?php echo $text_all_categories; ?></a></li>
+			<?php } ?>
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/product/product.php">
+		<operation>
+			<search position="after" index="1"><![CDATA[
+			if ($category_info) {
+			]]></search>			
+			<add><![CDATA[
+			if ($this->config->get('apac_status') && $this->config->get('apac_categories_status') && $this->config->get('apac_categories_breadcrumb')) {
+				$this->data['breadcrumbs'][] = array(
+					'text'      => $this->language->get('text_all_categories'),
+					'href'      => $this->url->link('product/allcategories'),
+					'separator' => $this->language->get('text_separator')
+				);
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/controller/product/category.php">
+		<operation>
+			<search position="after" offset="2"><![CDATA[
+			$this->url->link('common/home'),
+			]]></search>			
+			<add><![CDATA[
+			if ($this->config->get('apac_status') && $this->config->get('apac_categories_status') && $this->config->get('apac_categories_breadcrumb')) {
+				$this->data['breadcrumbs'][] = array(
+					'text'      => $this->language->get('text_all_categories'),
+					'href'      => $this->url->link('product/allcategories'),
+					'separator' => $this->language->get('text_separator')
+				);
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="catalog/model/catalog/category.php">
+		<operation>
+			<search position="before"><![CDATA[
+			function getCategory(
+			]]></search>
+			<add><![CDATA[
+			public function getAllCategories($data) {
+				$cache = md5(http_build_query($data));
+				$all_category_data = $this->cache->get('category.all.' . (int)$this->config->get('config_language_id') . '.' . (int)$this->config->get('config_store_id') . '.' . $cache);
+				
+				if (!$all_category_data) {
+					$all_category_data = array();
+					
+					$sql = "SELECT cp.category_id AS category_id, cd2.name AS name, c1.status, c1.image, c1.parent_id, c1.sort_order,
+					GROUP_CONCAT(cd1.name ORDER BY cp.level SEPARATOR ' &gt; ') AS path_name, 
+					GROUP_CONCAT(c2.sort_order ORDER BY cp.level SEPARATOR ' &gt; ') AS sort_order_path_display,
+					GROUP_CONCAT(LPAD(c2.sort_order,10,'0') ORDER BY cp.level) AS sort_order_path
+					FROM " . DB_PREFIX . "category_path cp 
+					LEFT JOIN " . DB_PREFIX . "category c1 ON (cp.category_id = c1.category_id) 
+					LEFT JOIN " . DB_PREFIX . "category c2 ON (cp.path_id = c2.category_id)
+					LEFT JOIN " . DB_PREFIX . "category_description cd1 ON (cp.path_id = cd1.category_id) 
+					LEFT JOIN " . DB_PREFIX . "category_description cd2 ON (cp.category_id = cd2.category_id) 
+					WHERE cd1.language_id = '" . (int)$this->config->get('config_language_id') . "' 
+					AND cd2.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+
+					if (!empty($data['filter_name'])) {
+						$sql .= " AND cd2.name LIKE '" . $this->db->escape($data['filter_name']) . "%'";
+					}
+					
+					if (!empty($data['filter_status'])) {
+						$sql .= " AND c1.status = '" . (int)$data['filter_status'] . "'";
+					}
+					
+					$sql .= " GROUP BY cp.category_id";
+
+					$sort_data = array(
+						'name',
+						'path_name',
+						'sort_order',
+						'sort_order_path'
+					);	
+
+					if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
+						$sql .= " ORDER BY " . $data['sort'];	
+					} else {
+						$sql .= " ORDER BY name";	
+					}
+
+					if (isset($data['order']) && ($data['order'] == 'DESC')) {
+						$sql .= " DESC";
+					} else {
+						$sql .= " ASC";
+					}
+
+					if (isset($data['start']) || isset($data['limit'])) {
+						if ($data['start'] < 0) {
+							$data['start'] = 0;
+						}				
+						if ($data['limit'] < 1) {
+							$data['limit'] = 20;
+						}	
+						$sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
+					}
+
+					$query = $this->db->query($sql);
+									
+					foreach ($query->rows as $result) {
+						$all_category_data[] = array(
+							'category_id' => $result['category_id'],
+							'name'        => $result['name'],
+							'path_name'	  => $result['path_name'],
+							'image'  	  => $result['image'],
+							'sort_order'  => $result['sort_order'],
+							'sort_order_path'  => $result['sort_order_path'],
+							'sort_order_path_display'  => $result['sort_order_path_display'],
+							'status'  	  => $result['status']
+						);
+					}
+				
+					$this->cache->set('category.all.' . (int)$this->config->get('config_language_id') . '.' . (int)$this->config->get('config_store_id') . '.' . $cache, $all_category_data);
+				}
+				
+				return $all_category_data;
+			}
+					
+			public function getTotalCategories() {
+				$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "category c LEFT JOIN " . DB_PREFIX . "category_to_store c2s ON (c.category_id = c2s.category_id) WHERE c2s.store_id = '" . (int)$this->config->get('config_store_id') . "' AND c.status = '1'");	
+				return $query->row['total'];
+			}
+			
+			public function getCategoryFiltersAll($data = array()) {
+			
+				$filter_group_data = array();
+
+				if (isset($data['filter_category_filter'])) {
+					$implode = array();
+					
+					$query = $this->db->query("SELECT filter_id FROM " . DB_PREFIX . "category_filter");
+					
+					foreach ($query->rows as $result) {
+						$implode[] = (int)$result['filter_id'];
+					}
+				}
+				
+				$sql = "SELECT DISTINCT f.filter_group_id, fgd.name, fg.sort_order FROM " . DB_PREFIX . "filter f LEFT JOIN " . DB_PREFIX . "filter_group fg ON (f.filter_group_id = fg.filter_group_id) LEFT JOIN " . DB_PREFIX . "filter_group_description fgd ON (fg.filter_group_id = fgd.filter_group_id)";
+
+				if (isset($data['filter_category_filter'])) {
+					$sql .= " WHERE f.filter_id IN (" . implode(',', $implode) . ") AND fgd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+				} else {
+					$sql .= " WHERE fgd.language_id = '" . (int)$this->config->get('config_language_id') . "'";
+				}
+				
+				$sql .= " GROUP BY f.filter_group_id ORDER BY fg.sort_order, LCASE(fgd.name)";
+				
+				$filter_group_query = $this->db->query($sql);
+					
+				foreach ($filter_group_query->rows as $filter_group) {
+					$filter_data = array();
+					
+					$sql = "SELECT DISTINCT f.filter_id, fd.name FROM " . DB_PREFIX . "filter f LEFT JOIN " . DB_PREFIX . "filter_description fd ON (f.filter_id = fd.filter_id)";
+					
+					if (isset($data['filter_category_filter'])) {
+						$sql .= " WHERE f.filter_id IN (" . implode(',', $implode) . ") AND f.filter_group_id = '" . (int)$filter_group['filter_group_id'] . "'";
+					} else {
+						$sql .= " WHERE f.filter_group_id = '" . (int)$filter_group['filter_group_id'] . "'";
+					}
+					
+					$sql .= " AND fd.language_id = '" . (int)$this->config->get('config_language_id') . "' ORDER BY f.sort_order, LCASE(fd.name)";
+					
+					$filter_query = $this->db->query($sql);
+					
+					foreach ($filter_query->rows as $filter) {
+						$filter_data[] = array(
+							'filter_id' => $filter['filter_id'],
+							'name'      => $filter['name']			
+						);
+					}
+					
+					if ($filter_data) {
+						$filter_group_data[] = array(
+							'filter_group_id' => $filter_group['filter_group_id'],
+							'name'            => $filter_group['name'],
+							'filter'          => $filter_data
+						);	
+					}
+				}
+				
+				return $filter_group_data;
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<!-- SEO URLs -->
+
+	<file name="catalog/controller/common/seo_url.php">
+		<operation>
+			<search position="before"><![CDATA[
+			if ($url[0] == 'product_id') {
+			]]></search>
+			<add><![CDATA[
+			if ($url[0] == 'product/allproducts') {
+				$this->request->get['route'] = 'product/allproducts';
+			}
+			if ($url[0] == 'product/allcategories') {
+				$this->request->get['route'] = 'product/allcategories';
+			}
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			} elseif ($key == 'path') {
+			]]></search>
+			<add><![CDATA[
+			} elseif ($data['route'] == 'product/allproducts' || $data['route'] == 'product/allcategories') {
+				$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "url_alias WHERE `query` = '" . $this->db->escape($data['route']) . "'");
+				if ($query->num_rows) {
+					$url .= '/' . $query->row['keyword'];
+					unset($data[$key]);
+				}
+			]]></add>
+		</operation>
+	</file>
+	
+</modification>
