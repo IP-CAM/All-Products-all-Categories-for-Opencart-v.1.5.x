@@ -1,13 +1,13 @@
 <modification>
 	<id>All Products and All Categories (APAC) + PLUS for OpenCart</id>
-	<version>1.0.0</version>
+	<version>1.0.2</version>
 	<vqmver>2.4.0</vqmver>
 	<author>garudacrafts</author>
 	<notes>Please see Module Settings page for information and instructions.</notes>
 	
 	<!-- ALL PRODUCTS -->
 	
-	<file name="catalog/language/english/common/header.php,catalog/language/english/product/category.php,catalog/language/english/product/product.php">
+	<file name="catalog/language/english/common/header.php,catalog/language/english/product/category.php,catalog/language/english/product/product.php,catalog/language/english/product/manufacturer.php">
 		<operation>
 			<search position="bottom" offset="2"></search>
 			<add><![CDATA[
@@ -95,7 +95,7 @@
 		</operation>
 	</file>
 	
-	<file name="catalog/controller/product/product.php">
+	<file name="catalog/controller/product/product.php,catalog/controller/product/category.php,catalog/controller/product/manufacturer.php">
 		<operation>
 			<search position="after" offset="2"><![CDATA[
 			$this->url->link('common/home'),
@@ -150,13 +150,17 @@
 						$sql .= " FROM " . DB_PREFIX . "product p";
 					}
 
-					$sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) LEFT JOIN " . DB_PREFIX . "product_to_store p2s ON (p.product_id = p2s.product_id) WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "' AND p.status = '1' AND p.date_available <= NOW() AND p2s.store_id = '" . (int)$this->config->get('config_store_id') . "'";
+					$sql .= " LEFT JOIN " . DB_PREFIX . "product_description pd ON (p.product_id = pd.product_id) 
+							LEFT JOIN " . DB_PREFIX . "product_to_store p2s ON (p.product_id = p2s.product_id)";
+					
+					$sql .= " WHERE pd.language_id = '" . (int)$this->config->get('config_language_id') . "'
+							AND p.status = '1' AND p.date_available <= NOW() AND p2s.store_id = '" . (int)$this->config->get('config_store_id') . "'";
 
 					if (!empty($data['filter_category_id'])) {
 						if (!empty($data['filter_sub_category'])) {
 							$sql .= " AND cp.path_id = '" . (int)$data['filter_category_id'] . "'";	
 						} else {
-							$sql .= " AND p2c.category_id = '" . (int)$data['filter_category_id'] . "'";			
+							$sql .= " AND p2c.category_id = '" . (int)$data['filter_category_id'] . "'";
 						}	
 
 						if (!empty($data['filter_filter'])) {
@@ -168,7 +172,7 @@
 								$implode[] = (int)$filter_id;
 							}
 
-							$sql .= " AND pf.filter_id IN (" . implode(',', $implode) . ")";				
+							$sql .= " AND pf.filter_id IN (" . implode(',', $implode) . ")";
 						}
 					} elseif (!empty($data['filter_filter'])) {
 							$implode = array();
@@ -387,7 +391,9 @@
 				if (!$all_category_data) {
 					$all_category_data = array();
 					
-					$sql = "SELECT cp.category_id AS category_id, cd2.name AS name, c1.status, c1.image, c1.parent_id, c1.sort_order,
+					$sql = "SELECT cp.category_id AS category_id, cd2.name AS name, c1.status, c1.image, c1.parent_id, c1.sort_order, 
+					MAX(cp.level) AS level_max, 
+					GROUP_CONCAT(cp.path_id ORDER BY cp.level SEPARATOR '_') AS path_ids, 
 					GROUP_CONCAT(cd1.name ORDER BY cp.level SEPARATOR ' &gt; ') AS path_name, 
 					GROUP_CONCAT(c2.sort_order ORDER BY cp.level SEPARATOR ' &gt; ') AS sort_order_path_display,
 					GROUP_CONCAT(LPAD(c2.sort_order,10,'0') ORDER BY cp.level) AS sort_order_path
@@ -443,12 +449,14 @@
 					foreach ($query->rows as $result) {
 						$all_category_data[] = array(
 							'category_id' => $result['category_id'],
+							'path_ids' => $result['path_ids'],
 							'name'        => $result['name'],
 							'path_name'	  => $result['path_name'],
 							'image'  	  => $result['image'],
 							'sort_order'  => $result['sort_order'],
 							'sort_order_path'  => $result['sort_order_path'],
 							'sort_order_path_display'  => $result['sort_order_path_display'],
+							'level_max'  	  => $result['level_max'],
 							'status'  	  => $result['status']
 						);
 					}
@@ -528,7 +536,6 @@
 	</file>
 	
 	<!-- SEO URLs -->
-
 	<file name="catalog/controller/common/seo_url.php">
 		<operation>
 			<search position="before"><![CDATA[
@@ -557,5 +564,4 @@
 			]]></add>
 		</operation>
 	</file>
-	
 </modification>
