@@ -1,17 +1,17 @@
-All Products and All Categories (APAC) + PLUS
+# All Products and All Categories (APAC) + PLUS
 OpenCart extension
 
 ---
 
-DESCRIPTION
+## DESCRIPTION
 
-What: adds two new pages, "All Products" page and "All Categories" page 
+**What:** adds two new pages, "All Products" page and "All Categories" page 
 
-Where: new routes "route=product/allproducts" and "route=product/allcategories" added to store front-end
+**Where:** new routes "route=product/allproducts" and "route=product/allcategories" added to store front-end
 
-Features: this extension adds two critically important pages missing from the default OpenCart installation. And it has all the features, support, and configuration settings missing from similar currently available extensions. It's two complete extensions for one low price - a great value!
+**Features:** this extension adds two critically important pages missing from the default OpenCart installation. And it has all the features, support, and configuration settings missing from similar currently available extensions. It's two complete extensions for one low price - a great value!
 
-All Products features and option settings include:
+***All Products features and option settings include:***
 - Displays Name, Image, Description, Meta_Keyword, and Meta_Description
 - SEO Keyword Alias
 - Supports Product Filters
@@ -22,7 +22,7 @@ All Products features and option settings include:
 - Breadcrumb "All Products" to Product pages option
 - View by Grid or List
 
-All Categories features and option settings include:
+***All Categories features and option settings include:***
 - Displays Name, Image, Description, Meta_Keyword, and Meta_Description
 - SEO Keyword Alias
 - Group Categories by Index
@@ -35,12 +35,13 @@ All Categories features and option settings include:
 
 Uses database caching for database queries to improve page load speed.
 
-All Products example: http://opencart.garudacrafts.com/1561/index.php?route=product/allproducts
-All Categories example: http://opencart.garudacrafts.com/1561/index.php?route=product/allcategories
+## DEMO
+- All Products example: http://opencart.garudacrafts.com/1561/index.php?route=product/allproducts
+- All Categories example: http://opencart.garudacrafts.com/1561/index.php?route=product/allcategories
 
 ---
 
-INSTALLATION INSTRUCTIONS
+## INSTALLATION
 - Requires OpenCart 1.5.5+ and vQmod 2.3.0+ is installed (https://code.google.com/p/vqmod/). No files overwritten.
 - Upload 'admin', 'catalog', and 'vqmod' directories to your web server root.
 - Configure & Save module settings at Admin->Extensions->Modules->APAC (be sure to complete BOTH sections, Options & Data, on each tab!)
